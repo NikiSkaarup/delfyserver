@@ -9,8 +9,10 @@ wss.on('connection', function connection(ws) {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(data);
             }
+            console.log(data)
         });
     });
 
     ws.send('Connected!');
+    console.log(ws + " connected");
 });
