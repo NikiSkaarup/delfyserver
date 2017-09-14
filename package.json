@@ -4,7 +4,8 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
   "author": "",
   "license": "ISC",
@@ -13,5 +14,8 @@
   },
   "repository": {
     "url": "https://github.com/nikiskaarup/delfyserver"
+  },
+  "devDependencies": {
+    "nodemon": "^1.12.0"
   }
 }
