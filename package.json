@@ -17,6 +17,7 @@
     "url": "https://github.com/nikiskaarup/delfyserver"
   },
   "devDependencies": {
-    "nodemon": "^1.12.0"
+    "nodemon": "^1.12.0",
+    "eslint": "^4.8.0"
   }
 }

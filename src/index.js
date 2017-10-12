@@ -50,7 +50,7 @@ wss.on('connection', (ws) => {
         }
     });
 
-    ws.send('Connected');
+    //ws.send('Connected');
     console.log('Client connected');
 });
 
