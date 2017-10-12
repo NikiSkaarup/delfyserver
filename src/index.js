@@ -30,7 +30,6 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', (code, message) => {
-        console.log('Attemping to remove someone');
         if (ws.isClient) {
             let host = hosts[ws.code];
             if (host) {
@@ -38,6 +37,7 @@ wss.on('connection', (ws) => {
                     .clients
                     .filter((client) => client != ws);
             }
+            updateHost(ws);
             console.log(`Removed client: ${code}, ${message}`);
         } else if (ws.isHost) {
             if (hosts[ws.code]) {
@@ -51,19 +51,19 @@ wss.on('connection', (ws) => {
     });
 
     //ws.send('Connected');
-    console.log('Client connected');
+    console.log('new connection');
 });
 
 function feedback(ws, message) {
-
+    console.log('Feedback!');
 }
 
 function voting(ws, message) {
-
+    console.log('Voting!');
 }
 
 function host(ws, message) {
-    console.log('Hosting');
+    console.log('Adding host');
     let code = getCode();
     while (hosts[code])
         code = getCode();
@@ -88,7 +88,7 @@ function host(ws, message) {
 }
 
 function join(ws, message) {
-    console.log('Joining');
+    console.log('Adding client');
     const code = message.code;
     let host = hosts[code];
     if (!host) {
@@ -100,6 +100,17 @@ function join(ws, message) {
 
     host.clients.push(ws);
     ws.send(JSON.stringify(host.config));
+    updateHost(ws);
+}
+
+function updateHost(ws) {
+    let host = hosts[ws.code];
+    if (host) {
+        broadcastToHost(ws, JSON.stringify({
+            type: 'update',
+            data: host.clients.map(() => { client: 'client' })
+        }));
+    }
 }
 
 function broadcastToClients(ws, message) {
