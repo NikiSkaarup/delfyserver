@@ -1,18 +1,129 @@
 const WebSocket = require('ws');
+const generate = require('nanoid/generate');
 
 const wss = new WebSocket.Server({ port: 8001 });
 
-wss.on('connection', function connection(ws) {
-    ws.on('message', function incoming(data) {
-        wss.clients.forEach(function each(client) {
-            if (client === ws) return;
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(data);
-            }
-            console.log(data);
-        });
+let hosts = {};
+
+wss.on('connection', (ws) => {
+    ws.on('message', (unParsed) => {
+        let message = JSON.parse(unParsed);
+
+        switch (message.type) {
+            case 'feedback':
+                feedback(ws, message);
+                break;
+            case 'voting':
+                voting(ws, message);
+                break;
+            case 'host':
+                host(ws, message);
+                break;
+            case 'join':
+                join(ws, message);
+                break;
+            default:
+                console.log(unParsed);
+                broadcast(ws, unParsed);
+                break;
+        }
     });
 
-    ws.send('Connected!');
-    console.log(ws + " connected");
+    ws.on('close', (code, message) => {
+        console.log('Attemping to remove someone');
+        if (ws.isClient) {
+            let host = hosts[ws.code];
+            if (host) {
+                host.clients = host
+                    .clients
+                    .filter((client) => client != ws);
+            }
+            console.log(`Removed client: ${code}, ${message}`);
+        } else if (ws.isHost) {
+            if (hosts[ws.code]) {
+                delete hosts[ws.code];
+            }
+            console.log(`Removed host: ${code}, ${message}`);
+        } else {
+            console.log(`Removed who knows what: ${code}, ${message}`);
+            // well fuck you didn't manage to do shit.
+        }
+    });
+
+    ws.send('Connected');
+    console.log('Client connected');
 });
+
+function feedback(ws, message) {
+
+}
+
+function voting(ws, message) {
+
+}
+
+function host(ws, message) {
+    console.log('Hosting');
+    let code = getCode();
+    while (hosts[code])
+        code = getCode();
+
+    ws.code = code;
+    ws.clients = [];
+    hosts[ws.code] = ws;
+    ws.isHost = true;
+
+    let config = {
+        type: 'config',
+        code: ws.code,
+        title: message.title,
+        positive: message.positive,
+        negative: message.negative,
+        amount: message.amount,
+        general: message.general,
+    };
+    ws.config = config;
+
+    ws.send(JSON.stringify(ws.config));
+}
+
+function join(ws, message) {
+    console.log('Joining');
+    const code = message.code;
+    let host = hosts[code];
+    if (!host) {
+        // inform client that no host with code exist
+        return;
+    }
+    ws.code = code;
+    ws.isClient = true;
+
+    host.clients.push(ws);
+    ws.send(JSON.stringify(host.config));
+}
+
+function broadcastToClients(ws, message) {
+    ws.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN)
+            client.send(message);
+    });
+}
+
+function broadcastToHost(ws, message) {
+    const host = hosts[ws.code];
+    if (host)
+        host.send(message);
+}
+
+function broadcast(ws, message) {
+    console.log(`broadcasting: ${message}`);
+    wss.clients.forEach((client) => {
+        if (client === ws) return;
+        if (client.readyState === WebSocket.OPEN)
+            client.send(message);
+    });
+}
+
+function getCode() {
+    return generate('1234567890abcdefghijklmnopqrstuvwxyz', 5);
+}
