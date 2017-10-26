@@ -55,7 +55,11 @@ wss.on('connection', (ws) => {
 });
 
 function feedback(ws, message) {
-    console.log('Feedback!');
+    if (ws.isHost) {
+        broadcastToClients(ws, message);
+    } else {
+        broadcastToHost(ws, message);
+    }
 }
 
 function voting(ws, message) {
