@@ -56,9 +56,9 @@ wss.on('connection', (ws) => {
 
 function feedback(ws, message) {
     if (ws.isHost) {
-        broadcastToClients(ws, message);
+        broadcastToClients(ws, JSON.stringify(message));
     } else {
-        broadcastToHost(ws, message);
+        broadcastToHost(ws, JSON.stringify(message));
     }
 }
 
@@ -117,17 +117,17 @@ function updateHost(ws) {
     }
 }
 
-function broadcastToClients(ws, message) {
+function broadcastToClients(ws, data) {
     ws.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN)
-            client.send(message);
+            client.send(data);
     });
 }
 
-function broadcastToHost(ws, message) {
+function broadcastToHost(ws, data) {
     const host = hosts[ws.code];
     if (host)
-        host.send(message);
+        host.send(data);
 }
 
 function broadcast(ws, message) {
