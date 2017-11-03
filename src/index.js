@@ -24,7 +24,7 @@ wss.on('connection', (ws) => {
                 break;
             default:
                 console.log(unParsed);
-                broadcast(ws, unParsed);
+                //broadcast(ws, unParsed);
                 break;
         }
     });
@@ -87,7 +87,6 @@ function host(ws, message) {
         general: message.general,
     };
     ws.config = config;
-
     ws.send(JSON.stringify(ws.config));
 }
 
@@ -102,9 +101,24 @@ function join(ws, message) {
     ws.code = code;
     ws.isClient = true;
 
+    let userId = generateUserId();
+    while (checkHostForUserId(host, userId))
+        userId = generateUserId();
+
+    ws.userId = userId;
     host.clients.push(ws);
-    ws.send(JSON.stringify(host.config));
+    ws.send(JSON.stringify(Object.assign({
+        id: userId
+    }, host.config)));
     updateHost(ws);
+}
+
+function checkHostForUserId(host, userId) {
+    for (let i = 0; i < host.clients.length; i++) {
+        if (host.clients[i].userId === userId)
+            return true;
+    }
+    return false;
 }
 
 function updateHost(ws) {
@@ -112,7 +126,12 @@ function updateHost(ws) {
     if (host) {
         broadcastToHost(ws, JSON.stringify({
             type: 'update',
-            data: host.clients.map(() => { client: 'client' })
+            data: host.clients.map((client) => {
+                return {
+                    type: 'client',
+                    id: client.userId
+                }
+            })
         }));
     }
 }
@@ -137,6 +156,10 @@ function broadcast(ws, message) {
         if (client.readyState === WebSocket.OPEN)
             client.send(message);
     });
+}
+
+function generateUserId() {
+    return generate('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 }
 
 function getCode() {
