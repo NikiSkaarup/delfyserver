@@ -58,6 +58,26 @@ function feedback(ws, message) {
     if (ws.isHost) {
         broadcastToClients(ws, JSON.stringify(message));
     } else {
+        let temp = {
+            positive: [],
+            negative: [],
+            general: []
+        };
+        temp.positive = message.data.positive.map(item => {
+            do item.id = genRndString(10);
+            while (checkArrayForId(temp.positive, item.id));
+            return item;
+        });
+        temp.negative = message.data.negative.map(item => {
+            do item.id = genRndString(10);
+            while (checkArrayForId(temp.negative, item.id));
+            return item;
+        });
+        temp.general = message.data.general.map(item => {
+            do item.id = genRndString(10);
+            while (checkArrayForId(temp.general, item.id));
+            return item;
+        });
         broadcastToHost(ws, JSON.stringify(message));
     }
 }
@@ -68,9 +88,10 @@ function voting(ws, message) {
 
 function host(ws, message) {
     console.log('Adding host');
-    let code = getCode();
-    while (hosts[code])
-        code = getCode();
+
+    let code;
+    do code = genRndString(5);
+    while (host[code]);
 
     ws.code = code;
     ws.clients = [];
@@ -94,23 +115,34 @@ function join(ws, message) {
     console.log('Adding client');
     const code = message.code;
     let host = hosts[code];
-    if (!host) {
-        // inform client that no host with code exist
+
+    if (!host) // inform client that no host with code exist
         return;
-    }
+
     ws.code = code;
     ws.isClient = true;
 
-    let userId = generateUserId();
-    while (checkHostForUserId(host, userId))
-        userId = generateUserId();
-
-    ws.userId = userId;
+    if (message.userId === undefined) {
+        let userId;
+        do userId = genRndString(10);
+        while (checkHostForUserId(host, userId));
+        ws.userId = userId;
+    } else {
+        ws.userId = message.userId
+    }
     host.clients.push(ws);
     ws.send(JSON.stringify(Object.assign({
-        id: userId
+        userId: ws.userId
     }, host.config)));
     updateHost(ws);
+}
+
+function checkArrayForId(arr, id) {
+    for (let i = 0; i < arr.length; i++) {
+        if (arr[i].id === id)
+            return true;
+    }
+    return false;
 }
 
 function checkHostForUserId(host, userId) {
@@ -129,7 +161,7 @@ function updateHost(ws) {
             data: host.clients.map((client) => {
                 return {
                     type: 'client',
-                    id: client.userId
+                    userId: client.userId
                 }
             })
         }));
@@ -158,10 +190,7 @@ function broadcast(ws, message) {
     });
 }
 
-function generateUserId() {
-    return generate('1234567890abcdefghijklmnopqrstuvwxyz', 10);
-}
-
-function getCode() {
-    return generate('1234567890abcdefghijklmnopqrstuvwxyz', 5);
+function genRndString(length) {
+    if (isNaN(length)) throw new Error('length must be a number');
+    return generate('1234567890abcdefghijklmnopqrstuvwxyz', length);
 }
