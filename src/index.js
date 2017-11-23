@@ -22,6 +22,9 @@ wss.on('connection', (ws) => {
             case 'join':
                 join(ws, message);
                 break;
+            case 'feedback_done':
+                feedback_done(ws, message);
+                break;
             default:
                 console.log(unParsed);
                 //broadcast(ws, unParsed);
@@ -54,6 +57,12 @@ wss.on('connection', (ws) => {
     console.log('new connection');
 });
 
+function feedback_done(ws, message) {
+    if (ws.isHost) {
+        broadcastToClients(ws, JSON.stringify(message));
+    }
+}
+
 function feedback(ws, message) {
     if (ws.isHost) {
         broadcastToClients(ws, JSON.stringify(message));
@@ -83,7 +92,11 @@ function feedback(ws, message) {
 }
 
 function voting(ws, message) {
-    console.log('Voting!');
+    if (ws.isHost) {
+        // dunno yet
+    } else {
+        broadcastToHost(ws, JSON.stringify(message));
+    }
 }
 
 function host(ws, message) {
