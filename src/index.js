@@ -53,7 +53,6 @@ wss.on('connection', (ws) => {
         }
     });
 
-    //ws.send('Connected');
     console.log('new connection');
 });
 
@@ -121,7 +120,9 @@ function host(ws, message) {
         general: message.general,
     };
     ws.config = config;
-    ws.send(JSON.stringify(ws.config));
+    ws.send(JSON.stringify(ws.config), (error) => {
+        console.log(error);
+    });
 }
 
 function join(ws, message) {
@@ -146,7 +147,9 @@ function join(ws, message) {
     host.clients.push(ws);
     ws.send(JSON.stringify(Object.assign({
         userId: ws.userId
-    }, host.config)));
+    }, host.config)), (error) => {
+        console.log(error);
+    });
     updateHost(ws);
 }
 
@@ -185,7 +188,9 @@ function broadcastToClients(ws, data) {
     if (ws.isHost) {
         ws.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN)
-                client.send(data);
+                client.send(data, (error) => {
+                    console.log(error);
+                });
         });
     }
 }
@@ -194,7 +199,9 @@ function broadcastToHost(ws, data) {
     if (ws.isClient) {
         const host = hosts[ws.code];
         if (host && host.readyState === WebSocket.OPEN)
-            host.send(data);
+            host.send(data, (error) => {
+                console.log(error);
+            });
     }
 }
 
@@ -203,7 +210,9 @@ function broadcast(ws, message) {
     wss.clients.forEach((client) => {
         if (client === ws) return;
         if (client.readyState === WebSocket.OPEN)
-            client.send(message);
+            client.send(message, (error) => {
+                console.log(error);
+            });
     });
 }
 
