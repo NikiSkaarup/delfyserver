@@ -121,7 +121,7 @@ function host(ws, message) {
     };
     ws.config = config;
     ws.send(JSON.stringify(ws.config), (error) => {
-        console.log(error);
+        if (error) console.log(error);
     });
 }
 
@@ -148,7 +148,7 @@ function join(ws, message) {
     ws.send(JSON.stringify(Object.assign({
         userId: ws.userId
     }, host.config)), (error) => {
-        console.log(error);
+        if (error) console.log(error);
     });
     updateHost(ws);
 }
@@ -189,7 +189,7 @@ function broadcastToClients(ws, data) {
         ws.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN)
                 client.send(data, (error) => {
-                    console.log(error);
+                    if (error) console.log(error);
                 });
         });
     }
@@ -200,7 +200,7 @@ function broadcastToHost(ws, data) {
         const host = hosts[ws.code];
         if (host && host.readyState === WebSocket.OPEN)
             host.send(data, (error) => {
-                console.log(error);
+                if (error) console.log(error);
             });
     }
 }
@@ -211,7 +211,7 @@ function broadcast(ws, message) {
         if (client === ws) return;
         if (client.readyState === WebSocket.OPEN)
             client.send(message, (error) => {
-                console.log(error);
+                if(error) console.log(error);
             });
     });
 }
