@@ -182,16 +182,20 @@ function updateHost(ws) {
 }
 
 function broadcastToClients(ws, data) {
-    ws.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN)
-            client.send(data);
-    });
+    if (ws.isHost) {
+        ws.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN)
+                client.send(data);
+        });
+    }
 }
 
 function broadcastToHost(ws, data) {
-    const host = hosts[ws.code];
-    if (host)
-        host.send(data);
+    if (ws.isClient) {
+        const host = hosts[ws.code];
+        if (host && host.readyState === WebSocket.OPEN)
+            host.send(data);
+    }
 }
 
 function broadcast(ws, message) {
