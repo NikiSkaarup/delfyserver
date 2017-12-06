@@ -72,22 +72,31 @@ function feedback(ws, message) {
             negative: [],
             general: []
         };
-        temp.positive = message.data.positive.map(item => {
-            do item.id = genRndString(10);
-            while (checkArrayForId(temp.positive, item.id));
-            return item;
-        });
-        temp.negative = message.data.negative.map(item => {
-            do item.id = genRndString(10);
-            while (checkArrayForId(temp.negative, item.id));
-            return item;
-        });
-        temp.general = message.data.general.map(item => {
-            do item.id = genRndString(10);
-            while (checkArrayForId(temp.general, item.id));
-            return item;
-        });
-        broadcastToHost(ws, JSON.stringify(message));
+        temp.positive = message.data.positive
+            .filter((item) => (!!item.val && item.val !== ''))
+            .map(item => {
+                do item.id = genRndString(10);
+                while (checkArrayForId(temp.positive, item.id));
+                return item;
+            });
+        temp.negative = message.data.negative
+            .filter((item) => (!!item.val && item.val !== ''))
+            .map(item => {
+                do item.id = genRndString(10);
+                while (checkArrayForId(temp.negative, item.id));
+                return item;
+            });
+        temp.general = message.data.general
+            .filter((item) => (!!item.val && item.val !== ''))
+            .map(item => {
+                do item.id = genRndString(10);
+                while (checkArrayForId(temp.general, item.id));
+                return item;
+            });
+        broadcastToHost(ws, JSON.stringify({
+            type: 'feedback',
+            data: temp
+        }));
     }
 }
 
