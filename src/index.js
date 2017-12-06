@@ -3,11 +3,13 @@ const generate = require('nanoid/generate');
 
 const wss = new WebSocket.Server({ port: 8001 });
 
+// Hosting WebSockets identified by joincode
+// pretty much used as a hashmap
 let hosts = {};
 
 wss.on('connection', (ws) => {
     ws.on('message', (unParsed) => {
-        let message = JSON.parse(unParsed);
+        const message = JSON.parse(unParsed);
 
         switch (message.type) {
             case 'feedback':
@@ -17,7 +19,7 @@ wss.on('connection', (ws) => {
                 voting(ws, message);
                 break;
             case 'host':
-                host(ws, message);
+                doHost(ws, message);
                 break;
             case 'join':
                 join(ws, message);
@@ -26,8 +28,6 @@ wss.on('connection', (ws) => {
                 feedback_done(ws, message);
                 break;
             default:
-                console.log(unParsed);
-                //broadcast(ws, unParsed);
                 break;
         }
     });
@@ -43,25 +43,32 @@ wss.on('connection', (ws) => {
             updateHost(ws);
             console.log(`Removed client: ${code}, ${message}`);
         } else if (ws.isHost) {
-            if (hosts[ws.code]) {
-                delete hosts[ws.code];
-            }
+            if (hosts[ws.code]) delete hosts[ws.code];
             console.log(`Removed host: ${code}, ${message}`);
         } else {
             console.log(`Removed who knows what: ${code}, ${message}`);
-            // well fuck you didn't manage to do shit.
         }
     });
 
     console.log('new connection');
 });
 
+/**
+ * 
+ * @param {WebSocket} ws 
+ * @param {string} message 
+ */
 function feedback_done(ws, message) {
     if (ws.isHost) {
         broadcastToClients(ws, JSON.stringify(message));
     }
 }
 
+/**
+ * 
+ * @param {WebSocket} ws 
+ * @param {string} message 
+ */
 function feedback(ws, message) {
     if (ws.isHost) {
         broadcastToClients(ws, JSON.stringify(message));
@@ -99,6 +106,11 @@ function feedback(ws, message) {
     }
 }
 
+/**
+ * 
+ * @param {WebSocket} ws 
+ * @param {string} message 
+ */
 function voting(ws, message) {
     if (ws.isHost) {
         // dunno yet
@@ -107,33 +119,40 @@ function voting(ws, message) {
     }
 }
 
-function host(ws, message) {
+/**
+ * 
+ * @param {WebSocket} host 
+ * @param {string} message 
+ */
+function doHost(host, message) {
     console.log('Adding host');
 
     let code;
     do code = genRndString(5);
-    while (host[code]);
+    while (hosts[code]);
 
-    ws.code = code;
-    ws.clients = [];
-    hosts[ws.code] = ws;
-    ws.isHost = true;
+    host.code = code;
+    host.clients = [];
+    hosts[host.code] = host;
+    host.isHost = true;
 
-    let config = {
+    host.config = {
         type: 'config',
-        code: ws.code,
+        code: host.code,
         title: message.title,
         positive: message.positive,
         negative: message.negative,
         amount: message.amount,
         general: message.general,
     };
-    ws.config = config;
-    ws.send(JSON.stringify(ws.config), (error) => {
-        if (error) console.log(error);
-    });
+    host.send(JSON.stringify(host.config), (error) => error && console.log(error));
 }
 
+/**
+ * 
+ * @param {WebSocket} ws 
+ * @param {string} message 
+ */
 function join(ws, message) {
     console.log('Adding client');
     const code = message.code;
@@ -154,14 +173,18 @@ function join(ws, message) {
         ws.userId = message.userId
     }
     host.clients.push(ws);
-    ws.send(JSON.stringify(Object.assign({
+    const data = Object.assign({
         userId: ws.userId
-    }, host.config)), (error) => {
-        if (error) console.log(error);
-    });
+    }, host.config);
+    ws.send(JSON.stringify(data), (error) => error && console.log(error));
     updateHost(ws);
 }
 
+/**
+ * 
+ * @param {[]} arr 
+ * @param {string} id 
+ */
 function checkArrayForId(arr, id) {
     for (let i = 0; i < arr.length; i++) {
         if (arr[i].id === id)
@@ -170,6 +193,12 @@ function checkArrayForId(arr, id) {
     return false;
 }
 
+/**
+ * check if userId exist on host's list of clients
+ * 
+ * @param {WebSocket} host 
+ * @param {string} userId 
+ */
 function checkHostForUserId(host, userId) {
     for (let i = 0; i < host.clients.length; i++) {
         if (host.clients[i].userId === userId)
@@ -178,10 +207,15 @@ function checkHostForUserId(host, userId) {
     return false;
 }
 
-function updateHost(ws) {
-    let host = hosts[ws.code];
+/**
+ * Update number of participants on host
+ * 
+ * @param {WebSocket} client 
+ */
+function updateHost(client) {
+    let host = hosts[client.code];
     if (host) {
-        broadcastToHost(ws, JSON.stringify({
+        broadcastToHost(client, JSON.stringify({
             type: 'update',
             data: host.clients.map((client) => {
                 return {
@@ -193,9 +227,15 @@ function updateHost(ws) {
     }
 }
 
-function broadcastToClients(ws, data) {
-    if (ws.isHost) {
-        ws.clients.forEach((client) => {
+/**
+ * send data to all of the host's clients
+ * 
+ * @param {WebSocket} host 
+ * @param {string} data 
+ */
+function broadcastToClients(host, data) {
+    if (host.isHost) {
+        host.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN)
                 client.send(data, (error) => {
                     if (error) console.log(error);
@@ -204,9 +244,15 @@ function broadcastToClients(ws, data) {
     }
 }
 
-function broadcastToHost(ws, data) {
-    if (ws.isClient) {
-        const host = hosts[ws.code];
+/**
+ * send data to input client's host
+ * 
+ * @param {WebSocket} client 
+ * @param {string} data 
+ */
+function broadcastToHost(client, data) {
+    if (client.isClient) {
+        const host = hosts[client.code];
         if (host && host.readyState === WebSocket.OPEN)
             host.send(data, (error) => {
                 if (error) console.log(error);
@@ -214,18 +260,29 @@ function broadcastToHost(ws, data) {
     }
 }
 
+/**
+ * 
+ * @param {WebSocket} ws 
+ * @param {string} message 
+ */
 function broadcast(ws, message) {
     console.log(`broadcasting: ${message}`);
     wss.clients.forEach((client) => {
         if (client === ws) return;
         if (client.readyState === WebSocket.OPEN)
             client.send(message, (error) => {
-                if(error) console.log(error);
+                if (error) console.log(error);
             });
     });
 }
 
+/**
+ * Generates a random string of the input length
+ * must be above or equal 1
+ * 
+ * @param {number} length 
+ */
 function genRndString(length) {
-    if (isNaN(length)) throw new Error('length must be a number');
+    if (isNaN(length) || length < 1) throw new Error('length must be a number of 1 or more');
     return generate('1234567890abcdefghijklmnopqrstuvwxyz', length);
 }
