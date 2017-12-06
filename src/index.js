@@ -53,7 +53,6 @@ wss.on('connection', (ws) => {
         }
     });
 
-    //ws.send('Connected');
     console.log('new connection');
 });
 
@@ -130,7 +129,9 @@ function host(ws, message) {
         general: message.general,
     };
     ws.config = config;
-    ws.send(JSON.stringify(ws.config));
+    ws.send(JSON.stringify(ws.config), (error) => {
+        if (error) console.log(error);
+    });
 }
 
 function join(ws, message) {
@@ -155,7 +156,9 @@ function join(ws, message) {
     host.clients.push(ws);
     ws.send(JSON.stringify(Object.assign({
         userId: ws.userId
-    }, host.config)));
+    }, host.config)), (error) => {
+        if (error) console.log(error);
+    });
     updateHost(ws);
 }
 
@@ -191,16 +194,24 @@ function updateHost(ws) {
 }
 
 function broadcastToClients(ws, data) {
-    ws.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN)
-            client.send(data);
-    });
+    if (ws.isHost) {
+        ws.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN)
+                client.send(data, (error) => {
+                    if (error) console.log(error);
+                });
+        });
+    }
 }
 
 function broadcastToHost(ws, data) {
-    const host = hosts[ws.code];
-    if (host)
-        host.send(data);
+    if (ws.isClient) {
+        const host = hosts[ws.code];
+        if (host && host.readyState === WebSocket.OPEN)
+            host.send(data, (error) => {
+                if (error) console.log(error);
+            });
+    }
 }
 
 function broadcast(ws, message) {
@@ -208,7 +219,9 @@ function broadcast(ws, message) {
     wss.clients.forEach((client) => {
         if (client === ws) return;
         if (client.readyState === WebSocket.OPEN)
-            client.send(message);
+            client.send(message, (error) => {
+                if(error) console.log(error);
+            });
     });
 }
 
