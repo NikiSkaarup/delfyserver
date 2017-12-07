@@ -1,3 +1,5 @@
+require('./connection');
+const EvalResult = require('./models/evalResultLog');
 const WebSocket = require('ws');
 const generate = require('nanoid/generate');
 
@@ -27,6 +29,9 @@ wss.on('connection', (ws) => {
             case 'feedback_done':
                 feedback_done(ws, message);
                 break;
+            case 'store':
+                store(ws, message);
+                break;
             default:
                 break;
         }
@@ -52,6 +57,23 @@ wss.on('connection', (ws) => {
 
     console.log('new connection');
 });
+
+function store(ws, message) {
+    if (ws.isHost) {
+        let evaluation = EvalResult({
+            config: ws.config,
+            feedback: message.feedback,
+            votes: message.results,
+        });
+        evaluation.save((err) => {
+            if (err) {
+                console.log('Storing data went wrong.');
+                throw err;
+            }
+            // OK!!
+        });
+    }
+}
 
 /**
  * 
